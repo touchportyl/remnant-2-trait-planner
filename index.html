@@ -463,7 +463,9 @@
     var mainArchetypeTrait = "none"
     var subArchetypeTrait = "none"
     var traitList = []
+    var userdata = []
 
+    // display app
     traits.forEach(trait => {
       newElement = document.createElement("div")
       newElement.classList.add("grid-item")
@@ -594,14 +596,21 @@
       // get parent
       traitsListElement = document.getElementById("traits-list")
 
-      // clear html
+      // clear
       traitsListElement.innerHTML = ""
+      userdata = []
 
       traitList.forEach((traitID, index) => {
-        if (document.getElementById(traitID).dataset.allocatedPoints > 0) {
+        allocatedPointsValue = document.getElementById(traitID).dataset.allocatedPoints
+        
+        // save to list
+        userdata.push({trait:traitID, value:allocatedPointsValue})
+
+        if (allocatedPointsValue > 0) {
+          // display in sidebar
           traitsListElement.innerHTML +=
             "<div class=\"trait-container\">"+
-              "<div class=\"trait-header\">"+traits[index].name+" ["+document.getElementById(traitID).dataset.allocatedPoints+"]"+"</div>"+
+              "<div class=\"trait-header\">"+traits[index].name+" ["+allocatedPointsValue+"]"+"</div>"+
             //  "<div class=\"trait-effect\">"+
             //    "<div class=\"trait-text\">"+traits[index].effect+" by</div>"+
             //    "<div class=\"trait-value\">50%</div>"+
@@ -611,8 +620,66 @@
       })
     }
     
+    function ReadFromURL() {
+      // get full URL
+      readSearchParams = new URLSearchParams(document.location.search)
+      // get query strings
+      readMainArchetypeString = readSearchParams.get("main")
+      readSubArchetypeString = readSearchParams.get("sub")
+      readDataString = readSearchParams.get("data")
+
+      // convert to userdata
+      // allocate based on userdata
+    }
+
+    function WriteToURL() {
+      writeMainArchetypeString = "none"
+      writeSubArchetypeString = "none"
+
+      // get base URL
+      baseURL = new URL(document.location)
+
+      // get archetypes
+      extraArchetypeTraits.forEach((archetype, index) => {
+        if (archetype.mainTrait == mainArchetypeTrait) {
+          writeMainArchetypeString = archetype.name
+        }
+        else if (archetype.mainTrait == subArchetypeTrait) {
+          writeSubArchetypeString = archetype.name
+        }
+      })
+
+      // get query string
+      writeDataString = ""
+      // turns the userdata into a data string
+      traitList.forEach((trait, index) => {
+        if (userdata[index].trait == trait) {
+          if (userdata[index].value == 10) {
+            // special case for 10 so it shows up as one character
+            writeDataString += "X"
+          } else {
+            writeDataString += userdata[index].value
+          }
+        }
+      })
+
+      // write ?main=mainArchetypeString&sub=subArchetypeString&data=writeDataString to base url
+      writeSearchParams = new URLSearchParams([
+        ["main", writeMainArchetypeString],
+        ["sub", writeSubArchetypeString],
+        ["data", writeDataString]
+      ])
+      newURL = new URL(`${baseURL}?${writeSearchParams}`)
+
+      // soft write to URL without refreshing page
+      //console.log(newURL.toString());
+      window.history.pushState(newURL, "")
+    }
+    
+
     // run first allocation
     SelectArchetype("main-archetype")
+    WriteToURL()
   </script>
 
 </html>
