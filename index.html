@@ -446,6 +446,19 @@
       {name:"Wayfarer", effect:"Increases Enviroment Movement Speed (Vaulting, Ladders, Wading)", image:"wayfarer_trait_remnant2_wiki_guide_100px.png"},
     ];
 
+    extraArchetypeTraits = [
+      {name:"Gunslinger", mainTrait:"ammoreserves", vigor:2, endurance:1, spirit:0, expertise:2},
+      {name:"Handler", mainTrait:"kinship", vigor:1, endurance:1, spirit:0, expertise:3},
+      {name:"Challenger", mainTrait:"strongback", vigor:3, endurance:2, spirit:0, expertise:0},
+      {name:"Medic", mainTrait:"triage", vigor:2, endurance:0, spirit:1, expertise:2},
+      {name:"Hunter", mainTrait:"longshot", vigor:1, endurance:2, spirit:0, expertise:2},
+      {name:"Summoner", mainTrait:"regrowth", vigor:1, endurance:0, spirit:3, expertise:1},
+      {name:"Explorer", mainTrait:"swiftness", vigor:0, endurance:2, spirit:2, expertise:1},
+      {name:"Alchemist", mainTrait:"potency", vigor:1, endurance:0, spirit:2, expertise:2},
+      {name:"Engineer", mainTrait:"fortify", vigor:2, endurance:2, spirit:0, expertise:1},
+      {name:"Invader", mainTrait:"untouchable", vigor:0, endurance:4, spirit:1, expertise:0}
+    ]
+
     // persistent
     var mainArchetypeTrait = "none"
     var subArchetypeTrait = "none"
@@ -515,11 +528,22 @@
         // unlock trait
         LockTrait(mainArchetypeTrait, false)
 
-        // add values to the appropriate traits
+        // update the main archetype trait variable
         mainArchetypeTrait = archetypeElement.value
 
         // add new trait
         Allocate(mainArchetypeTrait, 10)
+
+        // add value to bonus traits
+        // this only applies to main archetypes
+        extraArchetypeTraits.forEach(trait => {
+          if (trait.mainTrait == mainArchetypeTrait) {
+            Allocate("vigor", trait.vigor)
+            Allocate("endurance", trait.endurance)
+            Allocate("spirit", trait.spirit)
+            Allocate("expertise", trait.expertise)
+          }
+        })
       }
       else if (id == 'sub-archetype') {
         Allocate(subArchetypeTrait, -10)
