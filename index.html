@@ -525,6 +525,17 @@
         // remove old trait
         Allocate(mainArchetypeTrait, -10)
 
+        // remove value from bonus traits
+        // this only applies to main archetypes
+        extraArchetypeTraits.forEach(trait => {
+          if (trait.mainTrait == mainArchetypeTrait) {
+            Allocate("vigor", -trait.vigor)
+            Allocate("endurance", -trait.endurance)
+            Allocate("spirit", -trait.spirit)
+            Allocate("expertise", -trait.expertise)
+          }
+        })
+
         // unlock trait
         LockTrait(mainArchetypeTrait, false)
 
