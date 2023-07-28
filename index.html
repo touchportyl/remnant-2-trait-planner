@@ -488,7 +488,7 @@
           "<div class=\"trait-name\">"+trait.name+"</div>"+
           "<div class=\"trait-bar\">"+
             "<button class=\"inline trait-button\" onclick=\"Allocate('"+traitID+"', -1)\">–</button>"+
-            "<div id=\""+traitID+"\" class=\"inline trait-number\" data-allocated-points=\"0\">0</div>"+
+            "<div id=\""+traitID+"\" class=\"inline trait-number\" data-minimum-points=\"0\" data-allocated-points=\"0\">0</div>"+
             "<button class=\"inline trait-button\" onclick=\"Allocate('"+traitID+"', 1)\">+</button>"+
           "</div>"+
         "</div>"
@@ -506,6 +506,7 @@
       // increment/decrement
       updatedValue = Math.min(Math.max(parseInt(parseInt(allocateElement.dataset.allocatedPoints) + parseInt(amount)), 0), 10)
 
+      // force value
       if (force) {
         updatedValue = Math.min(Math.max(parseInt(amount), 0), 10)
       }
@@ -531,6 +532,9 @@
         // this only applies to main archetypes
         extraArchetypeTraits.forEach(trait => {
           if (trait.mainTrait == mainArchetypeTrait) {
+            // don't need to reset minimum points
+            // setting overrides it all
+
             Allocate("vigor", -trait.vigor)
             Allocate("endurance", -trait.endurance)
             Allocate("spirit", -trait.spirit)
@@ -559,6 +563,12 @@
         // this only applies to main archetypes
         extraArchetypeTraits.forEach(trait => {
           if (trait.mainTrait == mainArchetypeTrait) {
+            // set minimum points
+            document.getElementById("vigor").dataset.minimumPoints = trait.vigor
+            document.getElementById("endurance").dataset.minimumPoints = trait.endurance
+            document.getElementById("spirit").dataset.minimumPoints = trait.spirit
+            document.getElementById("expertise").dataset.minimumPoints = trait.expertise
+
             Allocate("vigor", trait.vigor)
             Allocate("endurance", trait.endurance)
             Allocate("spirit", trait.spirit)
@@ -579,26 +589,33 @@
 
       // lock trait
       LockTrait(archetypeElement.value, true)
-
-      // finish up by updating everything in order
-      //CalculateAvailablePoints()
-      //UpdateEnabledTraits()
-      //WriteToURL()
     }
 
-    function LockTrait(id, isLocked, onlyAdd = false) {
+    function LockTrait(id, isLocked, type = "both") {
       traitLockElement = document.getElementById(id)
 
       // catch
       if (traitLockElement == null) return
 
-      // lock add button
-      traitLockElement.nextElementSibling.disabled = isLocked
-
-      if (onlyAdd) return
-
-      // lock remove button
-      traitLockElement.previousElementSibling.disabled = isLocked
+      switch (type) {
+        case "both":
+          // lock add button
+          traitLockElement.nextElementSibling.disabled = isLocked
+          // lock remove button
+          traitLockElement.previousElementSibling.disabled = isLocked
+          break;
+        case "add":
+          // lock add button
+          traitLockElement.nextElementSibling.disabled = isLocked
+          break;
+        case "remove":
+          // lock remove button
+          traitLockElement.previousElementSibling.disabled = isLocked
+          break;
+      
+        default:
+          break;
+      }
     }
 
     function CalculateAvailablePoints() {
@@ -608,21 +625,29 @@
         totalAllocatedPoints += parseInt(document.getElementById(traitID).dataset.allocatedPoints)
       })
       
-      // lock all or unlock all
-      if (totalAllocatedPoints >= 85) {
-        traitList.forEach(traitID => {
-          // if trait is main or sub archetype, don't touch it
-          if (traitID != mainArchetypeTrait && traitID != subArchetypeTrait) {
-            LockTrait(traitID, true, true)
+      // lock or unlock based on state
+      traitList.forEach(traitID => {
+        // if trait is main or sub archetype, don't touch it
+        if (traitID != mainArchetypeTrait && traitID != subArchetypeTrait) {
+          // get dataset
+          traitDataset = document.getElementById(traitID).dataset
+          // lock remove if trait points are 0
+          // special case: lock remove if trait points are 
+          if (parseInt(traitDataset.allocatedPoints) == parseInt(traitDataset.minimumPoints)) {
+            LockTrait(traitID, true, "remove")
+          } else {
+            LockTrait(traitID, false, "remove")
           }
-        })
-      } else {
-        traitList.forEach(traitID => {
-          if (traitID != mainArchetypeTrait && traitID != subArchetypeTrait) {
-            LockTrait(traitID, false, true)
+
+          // lock add if trait points are 10
+          // lock all add if no available trait points
+          if (totalAllocatedPoints >= 85 || parseInt(traitDataset.allocatedPoints) == 10) {
+            LockTrait(traitID, true, "add")
+          } else {
+            LockTrait(traitID, false, "add")
           }
-        })
-      }
+        }
+      })
       
       // update display
       document.getElementById("trait-points-available").textContent = 85 - totalAllocatedPoints
