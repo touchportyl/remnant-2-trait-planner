@@ -239,7 +239,7 @@
         cursor: pointer;
         transition: 0.05s ease-in-out;
       }
-      .trait-button:hover {
+      .trait-button:hover:not(:disabled) {
         background-color: #1a1a1a;
         color: #fff;
       }
@@ -248,6 +248,7 @@
         border: 2px solid #111;
         cursor: default;
       }
+
       .trait-number {
         flex-grow: 2;
         font-size: 21px;
@@ -463,7 +464,9 @@
     var mainArchetypeTrait = "none"
     var subArchetypeTrait = "none"
     var traitList = []
+    var userdata = []
 
+    // display app
     traits.forEach(trait => {
       newElement = document.createElement("div")
       newElement.classList.add("grid-item")
@@ -494,7 +497,7 @@
     })
 
     // functions
-    function Allocate(id, amount) {
+    function Allocate(id, amount, force = false) {
       allocateElement = document.getElementById(id)
 
       // catch
@@ -503,23 +506,22 @@
       // increment/decrement
       updatedValue = Math.min(Math.max(parseInt(parseInt(allocateElement.dataset.allocatedPoints) + parseInt(amount)), 0), 10)
 
+      if (force) {
+        updatedValue = Math.min(Math.max(parseInt(amount), 0), 10)
+      }
+
       // update values
       allocateElement.dataset.allocatedPoints = updatedValue
       allocateElement.innerHTML = updatedValue
 
-      // calculate
+      // finish up by updating everything in order
       CalculateAvailablePoints()
+      UpdateEnabledTraits()
+      WriteToURL()
     }
     
     function SelectArchetype(id) {
       archetypeElement = document.getElementById(id)
-
-      // catch duplicate
-      if (archetypeElement.value == subArchetypeTrait || archetypeElement.value == mainArchetypeTrait) {
-        subArchetypeTrait = "none"
-        document.getElementById("sub-archetype").value = subArchetypeTrait
-        return
-      }
       
       if (id == 'main-archetype') {
         // remove old trait
@@ -542,6 +544,14 @@
         // update the main archetype trait variable
         mainArchetypeTrait = archetypeElement.value
 
+        // new main value is same as sub
+        if (mainArchetypeTrait == subArchetypeTrait) {
+          // set sub to none
+          subArchetypeTrait = "none"
+          document.getElementById("sub-archetype").value = subArchetypeTrait
+          SelectArchetype("sub-archetype")
+        }
+
         // add new trait
         Allocate(mainArchetypeTrait, 10)
 
@@ -560,21 +570,35 @@
         Allocate(subArchetypeTrait, -10)
         LockTrait(subArchetypeTrait, false)
         subArchetypeTrait = archetypeElement.value
+        if (subArchetypeTrait == mainArchetypeTrait) {
+          subArchetypeTrait = "none"
+          document.getElementById("sub-archetype").value = subArchetypeTrait
+        }
         Allocate(subArchetypeTrait, 10)
       } else {}
 
       // lock trait
       LockTrait(archetypeElement.value, true)
+
+      // finish up by updating everything in order
+      //CalculateAvailablePoints()
+      //UpdateEnabledTraits()
+      //WriteToURL()
     }
 
-    function LockTrait(id, isLocked) {
+    function LockTrait(id, isLocked, onlyAdd = false) {
       traitLockElement = document.getElementById(id)
 
       // catch
-      if (allocateElement == null) return
+      if (traitLockElement == null) return
 
-      traitLockElement.previousElementSibling.disabled = isLocked
+      // lock add button
       traitLockElement.nextElementSibling.disabled = isLocked
+
+      if (onlyAdd) return
+
+      // lock remove button
+      traitLockElement.previousElementSibling.disabled = isLocked
     }
 
     function CalculateAvailablePoints() {
@@ -584,24 +608,45 @@
         totalAllocatedPoints += parseInt(document.getElementById(traitID).dataset.allocatedPoints)
       })
       
+      // lock all or unlock all
+      if (totalAllocatedPoints >= 85) {
+        traitList.forEach(traitID => {
+          // if trait is main or sub archetype, don't touch it
+          if (traitID != mainArchetypeTrait && traitID != subArchetypeTrait) {
+            LockTrait(traitID, true, true)
+          }
+        })
+      } else {
+        traitList.forEach(traitID => {
+          if (traitID != mainArchetypeTrait && traitID != subArchetypeTrait) {
+            LockTrait(traitID, false, true)
+          }
+        })
+      }
+      
       // update display
       document.getElementById("trait-points-available").textContent = 85 - totalAllocatedPoints
-
-      UpdateEnabledTraits()
     }
 
     function UpdateEnabledTraits() {
       // get parent
       traitsListElement = document.getElementById("traits-list")
 
-      // clear html
+      // clear
       traitsListElement.innerHTML = ""
+      userdata = []
 
       traitList.forEach((traitID, index) => {
-        if (document.getElementById(traitID).dataset.allocatedPoints > 0) {
+        allocatedPointsValue = document.getElementById(traitID).dataset.allocatedPoints
+        
+        // save to list
+        userdata.push({trait:traitID, value:allocatedPointsValue})
+
+        if (allocatedPointsValue > 0) {
+          // display in sidebar
           traitsListElement.innerHTML +=
             "<div class=\"trait-container\">"+
-              "<div class=\"trait-header\">"+traits[index].name+" ["+document.getElementById(traitID).dataset.allocatedPoints+"]"+"</div>"+
+              "<div class=\"trait-header\">"+traits[index].name+" ["+allocatedPointsValue+"]"+"</div>"+
             //  "<div class=\"trait-effect\">"+
             //    "<div class=\"trait-text\">"+traits[index].effect+" by</div>"+
             //    "<div class=\"trait-value\">50%</div>"+
@@ -611,8 +656,111 @@
       })
     }
     
+    function ReadFromURL() {
+      // get full URL
+      readSearchParams = new URLSearchParams(document.location.search)
+      // get query strings
+      readMainArchetypeString = readSearchParams.get("main")
+      readSubArchetypeString = readSearchParams.get("sub")
+      readDataString = readSearchParams.get("data")
+
+      // default values
+      if (readMainArchetypeString == null) {
+        readMainArchetypeString = "Gunslinger"
+      }
+      if (readSubArchetypeString == null) {
+        readSubArchetypeString = "None"
+      }
+      if (readDataString == null) {
+        readDataString = "0000000000000000000000000000000"
+      }
+      
+      // convert archetype name to trait
+      extraArchetypeTraits.forEach((archetype, index) => {
+        if ("None" == readSubArchetypeString) {
+          subArchetypeTrait = "none"
+        }
+
+        if (archetype.name == readMainArchetypeString) {
+          mainArchetypeTrait = archetype.mainTrait
+        }
+        else if (archetype.name == readSubArchetypeString) {
+          subArchetypeTrait = archetype.mainTrait
+        }
+      })
+
+      // turns the a data string into userdata
+        userdata = []
+      readDataString.split('').forEach((traitValue, index) => {
+        if (traitValue == "X") {
+          // special case for 10 so it shows up as one character
+          userdata.push({trait:traitList[index], value:10})
+        } else {
+          userdata.push({trait:traitList[index], value:traitValue})
+        }
+      })
+
+      // allocate based on userdata
+      userdata.forEach(data => {
+        Allocate(data.trait, data.value, true)
+      })
+      
+      // allocate archetypes
+      document.getElementById("main-archetype").value = mainArchetypeTrait
+      document.getElementById("sub-archetype").value = subArchetypeTrait
+      SelectArchetype("main-archetype")
+      SelectArchetype("sub-archetype")
+    }
+
+    function WriteToURL() {
+      writeMainArchetypeString = "None"
+      writeSubArchetypeString = "None"
+
+      // get base URL
+      baseURL = new URL(document.location)
+
+      // convert archetype trait to name
+      extraArchetypeTraits.forEach((archetype, index) => {
+        if ("none" == subArchetypeTrait) {
+          writeSubArchetypeString = "None"
+        }
+
+        if (archetype.mainTrait == mainArchetypeTrait) {
+          writeMainArchetypeString = archetype.name
+        }
+        else if (archetype.mainTrait == subArchetypeTrait) {
+          writeSubArchetypeString = archetype.name
+        }
+      })
+
+      // turns the userdata into a data string
+      writeDataString = ""
+      traitList.forEach((trait, index) => {
+        if (userdata[index].trait == trait) {
+          if (userdata[index].value == 10) {
+            // special case for 10 so it shows up as one character
+            writeDataString += "X"
+          } else {
+            writeDataString += userdata[index].value
+          }
+        }
+      })
+
+      // write ?main=mainArchetypeString&sub=subArchetypeString&data=writeDataString to base url
+      writeSearchParams = new URLSearchParams([
+        ["main", writeMainArchetypeString],
+        ["sub", writeSubArchetypeString],
+        ["data", writeDataString]
+      ])
+      newURL = `${baseURL.pathname}?${writeSearchParams}`
+
+      // soft write to URL without refreshing page
+      //console.log(newURL);
+      window.history.pushState(null, "", newURL)
+    }
+    
     // run first allocation
-    SelectArchetype("main-archetype")
+    ReadFromURL()
   </script>
 
 </html>
