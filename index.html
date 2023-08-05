@@ -335,7 +335,7 @@
         <div class="inline-block">TRAIT POINTS AVAILABLE</div>
       </div>
       <div class="total">
-        <div id="trait-points-total" class="inline-block">85</div>
+        <div id="trait-points-total" class="inline-block">90</div>
         <div class="inline-block">TOTAL TRAIT POINTS</div>
       </div>
     </div>
@@ -645,7 +645,7 @@
 
           // lock add if trait points are 10
           // lock all add if no available trait points
-          if (totalAllocatedPoints >= 85 || parseInt(traitDataset.allocatedPoints) == 10) {
+          if (totalAllocatedPoints >= 90 || parseInt(traitDataset.allocatedPoints) == 10) {
             LockTrait(traitID, true, "add")
           } else {
             LockTrait(traitID, false, "add")
@@ -654,7 +654,7 @@
       })
       
       // update display
-      document.getElementById("trait-points-available").textContent = 85 - totalAllocatedPoints
+      document.getElementById("trait-points-available").textContent = 90 - totalAllocatedPoints
     }
 
     function UpdateEnabledTraits() {
